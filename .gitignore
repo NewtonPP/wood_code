@@ -1,0 +1,5 @@
+.venv
+.env
+DEPLOYMENT.md
+test.md
+legacy
