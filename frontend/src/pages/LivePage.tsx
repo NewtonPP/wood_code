@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePolling } from "../hooks/usePolling";
-import { getHist, getMoisture, frameUrl } from "../lib/api";
+import { getHist, getMoisture, getDeviceInfo } from "../lib/api";
 import Histogram from "../components/Histogram";
 import MoistureBars from "../components/MoistureBars";
+import LiveView from "../components/LiveView";
 import type { HistData, Moisture, Stats } from "../types";
 
 interface Props {
@@ -104,11 +105,14 @@ function StatsPanel({ data }: { data: Stats | null }) {
 }
 
 export default function LivePage({ stats }: Props) {
-  const [frame, setFrame] = useState<string>("");
   const [hist, setHist] = useState<HistData | null>(null);
   const [moist, setMoist] = useState<Moisture | null>(null);
+  const [role, setRole] = useState<string>("device");
 
-  usePolling(() => setFrame(frameUrl()), 200);
+  useEffect(() => {
+    getDeviceInfo().then((info) => setRole(info.role));
+  }, []);
+
   usePolling(async () => {
     try {
       setHist(await getHist());
@@ -156,7 +160,7 @@ export default function LivePage({ stats }: Props) {
         {/* <div className="panel live-panel" id="panel-live"> */}
           {/* <h2>Live View</h2> */}
           <div className="live-content">
-            <img id="video" src={frame} alt="Live camera feed" />
+            <LiveView role={role} />
             <div className="live-legend">
               <div className="legend-row">
                 <div className="legend-label">Normal</div>

@@ -1,0 +1,14 @@
+# Keep the Cloud Build upload small and secrets out of the build context.
+.git
+.venv
+**/__pycache__
+**/*.pyc
+frontend/node_modules
+web
+*.sqlite3
+.env
+legacy
+test.md
+CLOUD_DEPLOYMENT_PLAN.md
+.DS_Store
+**/.DS_Store

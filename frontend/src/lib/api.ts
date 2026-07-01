@@ -2,6 +2,7 @@
 import type {
   AdminUser,
   AuditItem,
+  DeviceInfo,
   EventRow,
   Health,
   HistData,
@@ -48,15 +49,23 @@ export async function logoutRequest(): Promise<void> {
   }
 }
 
-export async function getDeviceInfo(): Promise<{ device_id: string }> {
+export async function getDeviceInfo(): Promise<DeviceInfo> {
   try {
     const res = await apiFetch("/api/info");
-    if (!res.ok) return { device_id: "" };
+    if (!res.ok) return { device_id: "", role: "device" };
     const data = await res.json();
-    return { device_id: data?.device_id || "" };
+    return { device_id: data?.device_id || "", role: data?.role || "device" };
   } catch {
-    return { device_id: "" };
+    return { device_id: "", role: "device" };
   }
+}
+
+// WebSocket URL for the frame-ingest endpoint (cloud role). Same origin as the
+// page, so the session cookie is sent automatically; ws:// over http, wss://
+// over https.
+export function ingestWsUrl(): string {
+  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${proto}//${window.location.host}/api/ingest/ws`;
 }
 
 export async function signupRequest(

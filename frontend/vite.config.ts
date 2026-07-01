@@ -9,7 +9,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": { target: "http://localhost:8000", changeOrigin: true },
+      // ws: true so the /api/ingest/ws frame-stream WebSocket proxies to uvicorn.
+      "/api": { target: "http://localhost:8000", changeOrigin: true, ws: true },
       "/ping": { target: "http://localhost:8000", changeOrigin: true },
     },
   },

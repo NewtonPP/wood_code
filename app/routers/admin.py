@@ -4,11 +4,9 @@ Admin: manage users (list / create / update). Requires the `manage_users`
 permission, which only the admin role has.
 """
 
-import sqlite3
-
 from fastapi import APIRouter, Body, Depends, HTTPException
 
-from ..db import _DB_LOCK, db_connect, audit_log
+from ..db import _DB_LOCK, db_connect, audit_log, IntegrityError
 from ..security import _pbkdf2_hash_password
 from ..time_utils import utc_now_iso
 from ..rbac import ROLE_PERMS
@@ -55,7 +53,7 @@ def admin_create_user(
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
             """, (email, display_name, role, pw["algo"], int(pw["iters"]), pw["salt_b64"], pw["hash_b64"], utc_now_iso()))
             conn.commit()
-        except sqlite3.IntegrityError:
+        except IntegrityError:
             conn.close()
             raise HTTPException(status_code=409, detail="User already exists")
         conn.close()

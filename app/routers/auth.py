@@ -7,7 +7,6 @@ provisioned on startup (seed_admin_from_env) — there is no first-run setup flo
 
 import re
 import secrets
-import sqlite3
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -15,7 +14,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
 
 from .. import config
 from ..config import SESSION_COOKIE, COOKIE_SECURE
-from ..db import _DB_LOCK, db_connect, audit_log
+from ..db import _DB_LOCK, db_connect, audit_log, insert_returning_id, IntegrityError
 from ..security import _verify_password, _pbkdf2_hash_password
 from ..time_utils import utc_now_iso
 from ..auth import get_current_user, _get_session_id_from_request
@@ -105,13 +104,12 @@ def _create_user(email: str, password: str, role: str, display_name: Optional[st
     with _DB_LOCK:
         conn = db_connect()
         try:
-            cur = conn.execute("""
+            new_id = insert_returning_id(conn, """
                 INSERT INTO users (email, display_name, role, pw_algo, pw_iters, pw_salt_b64, pw_hash_b64, created_at, is_active)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
             """, (email, display_name, role, pw["algo"], int(pw["iters"]), pw["salt_b64"], pw["hash_b64"], utc_now_iso()))
             conn.commit()
-            new_id = int(cur.lastrowid)
-        except sqlite3.IntegrityError:
+        except IntegrityError:
             conn.close()
             raise HTTPException(status_code=409, detail="An account with that email already exists")
         conn.close()

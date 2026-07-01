@@ -17,5 +17,10 @@ def ping():
 
 @router.get("/api/info")
 def info():
-    """Public: identifies which Jetson/appliance this instance is."""
-    return {"ok": True, "device_id": config.DEVICE_ID}
+    """Public: identifies this instance and its deployment role.
+
+    ``role`` tells the frontend how to source the live feed: "cloud" -> the
+    browser captures the camera and streams to the ingest WebSocket; "device"
+    -> the server provides annotated frames at /api/frame.
+    """
+    return {"ok": True, "device_id": config.DEVICE_ID, "role": config.ROLE}

@@ -10,8 +10,20 @@ from fastapi.responses import StreamingResponse
 
 from ..db import _DB_LOCK, db_connect, audit_log
 from ..auth import require_perm
+from .. import data_source
 
 router = APIRouter()
+
+# Roles allowed to see ALL tenants' events (and to filter by an arbitrary
+# device_id). Everyone else is hard-scoped to their own device — passing a
+# foreign device_id has no effect, so a tenant can never read another's events.
+OVERSIGHT_ROLES = {"admin", "manager"}
+
+
+def _effective_device_filter(user: dict, device_id_param: Optional[str]) -> Optional[str]:
+    if user.get("role") in OVERSIGHT_ROLES:
+        return device_id_param  # None = all devices; or a chosen device
+    return data_source.device_id_for_user(user)  # forced to the caller's own device
 
 
 @router.get("/api/events")
@@ -32,9 +44,10 @@ def events_list(
     if end_epoch is not None:
         q += " AND ts_epoch <= ?"
         params.append(float(end_epoch))
-    if device_id:
+    eff_device = _effective_device_filter(user, device_id)
+    if eff_device:
         q += " AND device_id = ?"
-        params.append(device_id)
+        params.append(eff_device)
     if alarm_only:
         q += " AND alarm_active = 1"
 
@@ -82,9 +95,10 @@ def events_export_csv(
     if end_epoch is not None:
         q += " AND ts_epoch <= ?"
         params.append(float(end_epoch))
-    if device_id:
+    eff_device = _effective_device_filter(user, device_id)
+    if eff_device:
         q += " AND device_id = ?"
-        params.append(device_id)
+        params.append(eff_device)
     if alarm_only:
         q += " AND alarm_active = 1"
 

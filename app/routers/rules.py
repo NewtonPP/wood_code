@@ -9,13 +9,52 @@ from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
-import live_cam_trt  # owns CUDA + TensorRT
-
+from .. import config
 from ..db import _DB_LOCK, db_connect, audit_log
 from ..time_utils import utc_now_iso
 from ..auth import require_perm
 
 router = APIRouter()
+
+
+# Rule knobs that feed the inference runtime (kept in one place for both roles).
+_RULE_KEYS = (
+    "conf_thr", "nms_iou", "alarm_threshold_mm", "alarm_enabled", "ref_diam_mm",
+    "histogram_mode", "moisture_enabled", "moisture_topk", "moisture_every_n_frames",
+)
+
+
+def _runtime_config() -> dict:
+    """Current effective runtime config, role-aware."""
+    if config.ROLE == "cloud":
+        import woodchip_core
+        return woodchip_core.get_runtime_config()
+    import live_cam_trt
+    return live_cam_trt.get_runtime_config() if hasattr(live_cam_trt, "get_runtime_config") else {}
+
+
+def _apply_rules_to_runtime(rules: dict) -> None:
+    """Push rule changes to the live inference runtime for the current role.
+
+    - device: mutate live_cam_trt's in-process config (the loop reads it live).
+    - cloud:  keep the backend's own config copy in sync AND forward to the
+              private inference service (best-effort; rules are still persisted).
+    """
+    kwargs = {k: rules.get(k) for k in _RULE_KEYS}
+    if config.ROLE == "cloud":
+        import woodchip_core
+        woodchip_core.update_runtime_config(**kwargs)
+        if config.INFERENCE_URL:
+            try:
+                import httpx
+                payload = {k: v for k, v in kwargs.items() if v is not None}
+                httpx.post(f"{config.INFERENCE_URL}/config", json=payload, timeout=5.0)
+            except Exception:
+                pass  # rules are persisted regardless; propagation is best-effort
+    else:
+        import live_cam_trt
+        if hasattr(live_cam_trt, "update_runtime_config"):
+            live_cam_trt.update_runtime_config(**kwargs)
 
 
 def _get_latest_rules_version() -> Optional[sqlite3.Row]:
@@ -64,8 +103,8 @@ def _insert_rules_version(rules: dict, created_by: Optional[str], reason: Option
 def rules_current(user: dict = Depends(require_perm("view_live"))):
     row = _get_latest_rules_version()
     if not row:
-        # no saved versions yet -> return current live_cam config if available
-        cfg = live_cam_trt.get_runtime_config() if hasattr(live_cam_trt, "get_runtime_config") else {}
+        # no saved versions yet -> return current runtime config if available
+        cfg = _runtime_config()
         return {"ok": True, "source": "runtime", "version": None, "rules": cfg}
     return {
         "ok": True,
@@ -123,18 +162,7 @@ def rules_update(
         raise HTTPException(status_code=400, detail="payload.rules must be an object")
 
     # Apply to runtime config (keep contract compatible with your existing /api/config)
-    if hasattr(live_cam_trt, "update_runtime_config"):
-        live_cam_trt.update_runtime_config(
-            conf_thr=rules.get("conf_thr"),
-            nms_iou=rules.get("nms_iou"),
-            alarm_threshold_mm=rules.get("alarm_threshold_mm"),
-            alarm_enabled=rules.get("alarm_enabled"),
-            ref_diam_mm=rules.get("ref_diam_mm"),
-            histogram_mode=rules.get("histogram_mode"),
-            moisture_enabled=rules.get("moisture_enabled"),
-            moisture_topk=rules.get("moisture_topk"),
-            moisture_every_n_frames=rules.get("moisture_every_n_frames"),
-        )
+    _apply_rules_to_runtime(rules)
 
     rec = _insert_rules_version(rules=rules, created_by=user.get("email"), reason=reason, apply_now=True)
     audit_log("rules_updated", user.get("email"), {"version": rec["version"], "reason": reason, "rules": rules})
@@ -163,18 +191,7 @@ def rules_rollback(
 
     rules = json.loads(row["rules_json"])
 
-    if hasattr(live_cam_trt, "update_runtime_config"):
-        live_cam_trt.update_runtime_config(
-            conf_thr=rules.get("conf_thr"),
-            nms_iou=rules.get("nms_iou"),
-            alarm_threshold_mm=rules.get("alarm_threshold_mm"),
-            alarm_enabled=rules.get("alarm_enabled"),
-            ref_diam_mm=rules.get("ref_diam_mm"),
-            histogram_mode=rules.get("histogram_mode"),
-            moisture_enabled=rules.get("moisture_enabled"),
-            moisture_topk=rules.get("moisture_topk"),
-            moisture_every_n_frames=rules.get("moisture_every_n_frames"),
-        )
+    _apply_rules_to_runtime(rules)
 
     rec = _insert_rules_version(rules=rules, created_by=user.get("email"), reason=f"rollback_to_v{target_version}", apply_now=True)
     audit_log("rules_rollback", user.get("email"), {"to_version": target_version, "new_version": rec["version"]})

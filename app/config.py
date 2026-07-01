@@ -43,6 +43,18 @@ DEVICE_ID = os.environ.get("WOODCHIP_DEVICE_ID", "device-1")
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 
+# Deployment role:
+#   "device" — legacy Jetson all-in-one: runs the in-process inference loop and
+#              reads live data from live_cam_trt's shared state (single camera).
+#   "cloud"  — cloud build: NO in-process inference / no CUDA. Browsers stream
+#              frames to /api/ingest/ws, which calls the inference service and
+#              fills a per-device live store that the live endpoints read.
+ROLE = os.environ.get("WOODCHIP_ROLE", "device").strip().lower()
+
+# Base URL of the private cloud inference service (cloud role only), e.g.
+# "http://inference:9000". The ingest WebSocket POSTs frames to INFERENCE_URL/infer.
+INFERENCE_URL = os.environ.get("INFERENCE_URL", "").rstrip("/")
+
 # Background threads flags
 _inference_started = False
 _sampler_started = False

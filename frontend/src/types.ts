@@ -117,6 +117,39 @@ export interface AuditItem {
   details: Record<string, unknown>;
 }
 
+// ---- Cloud inference (browser capture) ----
+export interface InferBox {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  score: number;
+  diameter: number;
+  oversized: boolean;
+}
+
+export interface InferenceResult {
+  ready?: boolean;
+  units?: string;
+  stats?: Stats | null;
+  histogram?: HistData | null;
+  moisture?: Moisture | null;
+  boxes?: InferBox[];
+  reference?: { cx: number; cy: number; diameter_px: number } | null;
+  frame_size?: { w: number; h: number };
+}
+
+export interface IngestMessage {
+  ok: boolean;
+  error?: string;
+  result?: InferenceResult;
+}
+
+export interface DeviceInfo {
+  device_id: string;
+  role: string; // "cloud" | "device"
+}
+
 export interface Health {
   ready?: boolean;
   camera_ok?: boolean;

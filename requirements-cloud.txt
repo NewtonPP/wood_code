@@ -1,0 +1,13 @@
+# Cloud backend dependencies (modern Python 3.11+ — no Jetson 3.6 / numpy 1.19
+# pin). Used by the root Dockerfile for the FastAPI backend + static frontend.
+#
+# The cloud backend does NOT run the model and does NOT import OpenCV/TensorRT:
+# browsers stream frames to the ingest WebSocket, which forwards them to the
+# separate inference service (see inference_service/requirements.txt).
+
+fastapi>=0.110
+uvicorn[standard]>=0.27   # includes websockets for the ingest WebSocket
+httpx>=0.27               # backend -> inference service calls
+python-dotenv>=1.0
+numpy>=1.26               # woodchip_core.config (rules runtime); NOT OpenCV
+psycopg[binary,pool]>=3.1 # Postgres (Cloud SQL) when DATABASE_URL is set

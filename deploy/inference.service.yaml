@@ -1,0 +1,34 @@
+# Cloud Run service — private inference service.
+# Declarative reference; fill the __PLACEHOLDERS__ then:
+#   gcloud run services replace deploy/inference.service.yaml --region=__REGION__
+# (The deploy/README.md shows the equivalent imperative `gcloud run deploy`.)
+#
+# Ingress is INTERNAL: only the backend (same VPC/project) can reach it — it is
+# never exposed to the internet.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: woodchip-inference
+  annotations:
+    run.googleapis.com/ingress: internal
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"   # scale to zero when idle
+        autoscaling.knative.dev/maxScale: "4"
+    spec:
+      containerConcurrency: 8
+      containers:
+        - image: __REGION__-docker.pkg.dev/__PROJECT_ID__/__REPO__/inference:latest
+          ports:
+            - containerPort: 9000
+          env:
+            - name: INFER_BACKEND
+              value: "mock"          # switch to "onnx" + model paths when models land
+          resources:
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          # For real GPU inference (INFER_BACKEND=onnx), use a GPU-enabled image +
+          # add the nvidia accelerator annotation/limits per Cloud Run GPU docs.
