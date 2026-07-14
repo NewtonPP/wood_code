@@ -1,5 +1,21 @@
 .venv
 .env
-DEPLOYMENT.md
-test.md
-legacy
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# macOS cruft
+.DS_Store
+
+# Local databases (dev SQLite; prod uses Cloud SQL Postgres)
+*.sqlite3
+
+# TypeScript incremental build caches
+*.tsbuildinfo
+
+# Exported model weights: baked into the inference image, too big for git.
+inference_service/models/*.onnx
+
+# Trained Keras weights (source for export_moistnet_onnx.py), kept out of git.
+moistnetlite_best_weights.h5

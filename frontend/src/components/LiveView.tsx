@@ -44,6 +44,8 @@ function BrowserCapture() {
   const wsRef = useRef<WebSocket | null>(null);
   const resultRef = useRef<InferenceResult | null>(null);
   const [state, setState] = useState<ConnState>("connecting");
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [uncalibrated, setUncalibrated] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,8 +105,18 @@ function BrowserCapture() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (!result || !result.frame_size) return;
 
-      const sx = dispW / result.frame_size.w;
-      const sy = dispH / result.frame_size.h;
+      // The video is letterboxed inside the panel (object-fit: contain), so
+      // map model coordinates into the actual displayed video rect.
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (!vw || !vh) return;
+      const scale = Math.min(dispW / vw, dispH / vh);
+      const rw = vw * scale;
+      const rh = vh * scale;
+      const ox = (dispW - rw) / 2;
+      const oy = (dispH - rh) / 2;
+      const sx = rw / result.frame_size.w;
+      const sy = rh / result.frame_size.h;
 
       // reference disk
       if (result.reference) {
@@ -112,7 +124,7 @@ function BrowserCapture() {
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(cx * sx, cy * sy, (diameter_px / 2) * sx, 0, Math.PI * 2);
+        ctx.arc(ox + cx * sx, oy + cy * sy, (diameter_px / 2) * sx, 0, Math.PI * 2);
         ctx.stroke();
       }
 
@@ -120,11 +132,11 @@ function BrowserCapture() {
         const color = b.oversized ? "#ff3b3b" : "#22c55e";
         ctx.strokeStyle = color;
         ctx.lineWidth = 2;
-        ctx.strokeRect(b.x1 * sx, b.y1 * sy, (b.x2 - b.x1) * sx, (b.y2 - b.y1) * sy);
+        ctx.strokeRect(ox + b.x1 * sx, oy + b.y1 * sy, (b.x2 - b.x1) * sx, (b.y2 - b.y1) * sy);
         if (result.units === "mm") {
           ctx.fillStyle = color;
           ctx.font = "12px sans-serif";
-          ctx.fillText(`${b.diameter.toFixed(0)}mm`, b.x1 * sx + 2, Math.max(10, b.y1 * sy - 3));
+          ctx.fillText(`${b.diameter.toFixed(0)}mm`, ox + b.x1 * sx + 2, Math.max(10, oy + b.y1 * sy - 3));
         }
       }
     };
@@ -143,7 +155,11 @@ function BrowserCapture() {
           const msg = JSON.parse(ev.data as string) as IngestMessage;
           if (msg.ok && msg.result) {
             resultRef.current = msg.result;
+            setAiError(null);
+            setUncalibrated(msg.result.units !== "mm");
             window.requestAnimationFrame(drawOverlay);
+          } else if (msg.error) {
+            setAiError(msg.error);
           }
         } catch {
           /* ignore malformed message */
@@ -200,12 +216,58 @@ function BrowserCapture() {
   }, []);
 
   return (
-    <div className="live-video-wrap" style={{ position: "relative", width: "100%" }}>
-      <video id="video" ref={videoRef} autoPlay playsInline muted style={{ width: "100%", display: "block" }} />
+    // Fill .live-content so the #video absolute/inset-0 sizing has a real box
+    // to resolve against (a static wrapper collapses to 0 height).
+    <div className="live-video-wrap" style={{ position: "absolute", inset: 0 }}>
+      <video
+        id="video"
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        style={{ width: "100%", height: "100%", display: "block", objectFit: "contain" }}
+      />
       <canvas
         ref={overlayRef}
         style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none" }}
       />
+      {state === "live" && !aiError && uncalibrated && (
+        <div
+          style={{
+            position: "absolute",
+            left: 8,
+            top: 8,
+            maxWidth: "70%",
+            background: "rgba(180,120,20,0.85)",
+            color: "#fff",
+            fontSize: 12,
+            padding: "4px 8px",
+            borderRadius: 4,
+            pointerEvents: "none",
+          }}
+        >
+          Uncalibrated — sizes in pixels. Show the blue reference disk to enable mm sizing and
+          oversize (red) highlighting.
+        </div>
+      )}
+      {state === "live" && aiError && (
+        <div
+          style={{
+            position: "absolute",
+            left: 8,
+            bottom: 8,
+            maxWidth: "70%",
+            background: "rgba(180,40,40,0.85)",
+            color: "#fff",
+            fontSize: 12,
+            padding: "4px 8px",
+            borderRadius: 4,
+            pointerEvents: "none",
+          }}
+        >
+          AI analysis unavailable: {aiError}
+        </div>
+      )}
       {state !== "live" && (
         <div
           className="live-overlay-status"

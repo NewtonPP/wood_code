@@ -9,7 +9,7 @@ cadence, same RBAC gating, controls drawer, and guided tour).
 - `src/lib/` — API layer (`api.ts`), RBAC mirror (`rbac.ts`), formatters (`format.ts`)
 - `src/context/` — `AuthContext` (session/login/logout), `ThemeContext` (day/night)
 - `src/hooks/usePolling.ts` — interval polling with cleanup
-- `src/components/` — Header, Nav, Footer, ControlsDrawer, Tour, Histogram, MoistureBars
+- `src/components/` — Nav, ControlsDrawer, Tour, Histogram, MoistureBars, LiveView
 - `src/pages/` — Login, Live, Events, Quality, Audit, Devices
 - `src/styles/global.css` — ported verbatim from the original `<style>` block
 

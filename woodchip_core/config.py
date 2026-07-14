@@ -35,7 +35,7 @@ STD = np.array([0.229, 0.224, 0.225], np.float32)
 CONF_THR, NMS_IOU = 0.5, 0.5
 
 # --- Reference object / calibration ---
-REF_DIAM_MM = 110.0   # real diameter of the white calibration disk (mm)
+REF_DIAM_MM = 110.0   # real diameter of the blue calibration disk (mm)
 SCALE_ROLLING_MAX = 500
 
 # --- Alarm ---

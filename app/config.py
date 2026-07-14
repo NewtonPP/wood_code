@@ -9,8 +9,8 @@ import os
 try:
     # Load a local .env (if present) so ADMIN_EMAIL/ADMIN_PASSWORD and friends
     # work in development. In cloud deployments these are set as real
-    # environment variables on the platform (AWS task/service config), so the
-    # missing-.env case is a no-op.
+    # environment variables on the platform (Cloud Run env vars / Secret
+    # Manager), so the missing-.env case is a no-op.
     from dotenv import load_dotenv
 
     load_dotenv()

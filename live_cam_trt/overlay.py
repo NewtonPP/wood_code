@@ -1,7 +1,7 @@
 # live_cam_trt/overlay.py
 """
 Compatibility shim — stats + on-frame rendering now live in
-``woodchip_core.overlay``. Re-exported so ``loop.py`` / ``mock.py`` are unchanged.
+``woodchip_core.overlay``. Re-exported so ``loop.py`` is unchanged.
 """
 
 from woodchip_core.overlay import (  # noqa: F401

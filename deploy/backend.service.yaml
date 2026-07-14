@@ -1,7 +1,7 @@
 # Cloud Run service — public backend + built frontend.
 # Declarative reference; fill the __PLACEHOLDERS__ then:
 #   gcloud run services replace deploy/backend.service.yaml --region=__REGION__
-# (The deploy/README.md shows the equivalent imperative `gcloud run deploy`.)
+# (DEPLOYMENT.md shows the equivalent imperative `gcloud run deploy`.)
 #
 # Secrets (ADMIN_PASSWORD, DATABASE_URL, ADMIN_EMAIL) are pulled from Secret
 # Manager. The Cloud SQL instance is attached via the cloudsql-instances

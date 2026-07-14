@@ -24,7 +24,7 @@ import numpy as np
 
 from . import config as default_config
 from .geometry import nms_np, compute_LWD
-from .reference import detect_white_reference_object
+from .reference import detect_reference_object
 from .moisture import topk_crops, prep_crop, moisture_aggregate
 from .overlay import compute_diameter_stats
 
@@ -72,7 +72,7 @@ class FrameProcessor:
 
     # ------------------------------------------------------------------ #
     def set_scale(self, pixels_per_mm):
-        """Force a calibration scale (used by the mock backend for a mm demo)."""
+        """Force a manual calibration scale (px/mm) instead of disk detection."""
         self.pixels_per_mm = float(pixels_per_mm)
         self.units = "mm"
 
@@ -82,7 +82,7 @@ class FrameProcessor:
         self._frame_idx += 1
         self._processed_idx += 1
 
-        # --- online calibration from the white reference disk ---
+        # --- online calibration from the blue reference disk ---
         ref_out = self._update_calibration(frame_bgr)
         scale_mean = float(np.mean(self.scale_buf)) if self.scale_buf else None
         scale_std = float(np.std(self.scale_buf)) if self.scale_buf else None
@@ -162,7 +162,7 @@ class FrameProcessor:
     # ------------------------------------------------------------------ #
     def _update_calibration(self, frame_bgr):
         cfg = self.cfg
-        ref = detect_white_reference_object(frame_bgr)
+        ref = detect_reference_object(frame_bgr)
         if ref is None or cfg.REF_DIAM_MM <= 0:
             return None
         cx, cy, diameter_px = ref

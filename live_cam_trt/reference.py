@@ -1,18 +1,18 @@
 # live_cam_trt/reference.py
 """
 Compatibility shim. Disk *detection* now lives in
-``woodchip_core.reference.detect_white_reference_object`` (pure). The device's
+``woodchip_core.reference.detect_reference_object`` (pure). The device's
 single-camera online scale update (mutating module-global ``config``) stays
 here so ``loop.py`` is unchanged.
 """
 
-from woodchip_core.reference import detect_white_reference_object  # noqa: F401
+from woodchip_core.reference import detect_reference_object  # noqa: F401
 
 from . import config
 
 
 def update_scale_from_reference(frame_bgr):
-    ref = detect_white_reference_object(frame_bgr)
+    ref = detect_reference_object(frame_bgr)
     if ref is None or config.REF_DIAM_MM <= 0:
         return None
 

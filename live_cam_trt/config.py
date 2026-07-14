@@ -19,7 +19,8 @@ MOIST_CLASSES_PATH = "/home/huser/Amir/detr-deploy/models/moisture/moistnetlite_
 
 OUT_DIR = "/home/huser/Amir/detr-deploy/live_outputs"
 # Best-effort: the Jetson output dir won't exist on a dev machine (e.g. macOS).
-# Guard so the package stays importable everywhere (needed for local/mock testing).
+# Guard so the package stays importable everywhere (the backend imports it for
+# config/state access without running the loop).
 try:
     os.makedirs(OUT_DIR, exist_ok=True)
 except OSError:
@@ -39,8 +40,8 @@ SHORTEST_EDGE, LONGEST_EDGE = 800, 1333
 CONF_THR, NMS_IOU = 0.5, 0.5
 
 # --- Reference object config ---
-REF_DIAM_MM = 110.0   # real diameter of your white disk in millimeters (user-configurable)
-PIXELS_PER_MM = None  # estimated online from the white object
+REF_DIAM_MM = 110.0   # real diameter of your blue disk in millimeters (user-configurable)
+PIXELS_PER_MM = None  # estimated online from the blue reference object
 UNITS = "pixels"
 
 # Rolling buffer of px/mm estimates

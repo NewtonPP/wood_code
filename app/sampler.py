@@ -24,15 +24,23 @@ def _safe_get(d: Any, key: str, default=None):
     return default
 
 
+def _first_present(d: Any, *keys):
+    for key in keys:
+        val = _safe_get(d, key, None)
+        if val is not None:
+            return val
+    return None
+
+
 def _write_event(device_id, stats, moist, health):
     ts_iso = utc_now_iso()
     ts_epoch = utc_now_epoch()
 
     alarm_active = int(bool(_safe_get(stats, "alarm_active", False))) if isinstance(stats, dict) else 0
     alarm_max_d_mm = _safe_get(stats, "alarm_max_d_mm", None) if isinstance(stats, dict) else None
-    units = _safe_get(stats, "units", None) or _safe_get(stats, "UNITS", None)
-    mean_d = _safe_get(stats, "mean", None) or _safe_get(stats, "mean_d", None) or _safe_get(stats, "mean_diameter", None)
-    std_d = _safe_get(stats, "std", None) or _safe_get(stats, "std_d", None) or _safe_get(stats, "std_diameter", None)
+    units = _first_present(stats, "units", "UNITS")
+    mean_d = _first_present(stats, "mean", "mean_d", "mean_diameter")
+    std_d = _first_present(stats, "std", "std_d", "std_diameter")
 
     moisture_mean_pred = None
     if isinstance(moist, dict) and moist.get("ready"):

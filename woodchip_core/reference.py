@@ -1,6 +1,6 @@
 # woodchip_core/reference.py
 """
-Reference-object (white disk) detection for online pixel/mm scale estimation.
+Reference-object (blue disk) detection for online pixel/mm scale estimation.
 
 Pure and side-effect free: it only *detects* the disk. The actual scale update
 (EMA of px/mm) is owned by the caller — ``FrameProcessor`` for the cloud (per
@@ -12,7 +12,7 @@ import numpy as np
 import cv2
 
 
-def detect_white_reference_object(frame_bgr):
+def detect_reference_object(frame_bgr):
     h, w = frame_bgr.shape[:2]
     hsv = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2HSV)
     lower = np.array([90, 80, 40], np.uint8)

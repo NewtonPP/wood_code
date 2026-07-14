@@ -1,18 +1,17 @@
-# Private cloud inference service: model backend + woodchip_core post-processing.
-# Build (from repo root):
+# Private cloud inference service: ONNX models + woodchip_core post-processing.
+# Build (from repo root; requires inference_service/models/detr_resnet101.onnx
+# to exist — export it first, see DEPLOYMENT.md):
 #   docker build -f inference_service/Dockerfile -t woodchip-inference .
-# Run (mock backend — works with no model files):
-#   docker run -p 9000:9000 -e INFER_BACKEND=mock woodchip-inference
+# Run:
+#   docker run -p 9000:9000 woodchip-inference
 #
-# For real models on a GPU host: switch the base image to an NVIDIA CUDA /
-# onnxruntime-gpu base, uncomment onnxruntime-gpu in requirements.txt, then run
-# with INFER_BACKEND=onnx and DETR_ONNX_PATH / MOISTURE_ONNX_PATH set.
+# For GPU inference: switch the base image to an NVIDIA CUDA / onnxruntime-gpu
+# base and swap onnxruntime for onnxruntime-gpu in requirements.txt.
 FROM python:3.11-slim
 
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    INFER_BACKEND=mock
+    PYTHONDONTWRITEBYTECODE=1
 
 # OpenCV (headless) needs a couple of shared libs at runtime.
 RUN apt-get update \

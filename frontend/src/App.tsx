@@ -58,7 +58,6 @@ export default function App() {
   return (
     <>
       <div id="app-shell">
-        {/* <Header status={status} statusColor={statusColor} onToggleControls={openControls} /> */}
         {user && <Nav onLogout={closeControls} />}
 
         <div className="main">
@@ -76,8 +75,6 @@ export default function App() {
             </Routes>
           )}
         </div>
-
-        {/* <Footer /> */}
 
         <ControlsDrawer open={controlsOpen} onClose={closeControls} />
       </div>

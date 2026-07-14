@@ -13,6 +13,7 @@ own calibration / rolling buffers / histogram state.
 """
 
 import base64
+import os
 import threading
 from typing import Dict, Optional
 
@@ -25,11 +26,11 @@ from woodchip_core import config as core_config
 from woodchip_core import update_runtime_config
 from woodchip_core.processor import FrameProcessor
 
-from .backends import make_backend
+from .model import OnnxModel
 
 app = FastAPI(title="Woodchip Inference Service")
 
-BACKEND = make_backend()
+MODEL = OnnxModel()
 
 _processors: Dict[str, FrameProcessor] = {}
 _lock = threading.Lock()
@@ -52,14 +53,20 @@ def _decode_frame(b64: str) -> np.ndarray:
     return frame
 
 
+# Manual calibration for fixed-mount cameras: if the blue reference disk is
+# not (always) in view, set DEFAULT_PIXELS_PER_MM so sizing/alarms run in mm
+# immediately. When the disk IS detected it refines this scale online.
+_DEFAULT_PPM = float(os.environ.get("DEFAULT_PIXELS_PER_MM", "0")) or None
+
+
 def _get_processor(device_id: str) -> FrameProcessor:
     with _lock:
         proc = _processors.get(device_id)
         if proc is None:
             proc = FrameProcessor(
                 cfg=core_config,
-                moisture_classes=BACKEND.moisture_classes,
-                initial_pixels_per_mm=BACKEND.default_pixels_per_mm,
+                moisture_classes=MODEL.moisture_classes,
+                initial_pixels_per_mm=MODEL.default_pixels_per_mm or _DEFAULT_PPM,
             )
             _processors[device_id] = proc
         return proc
@@ -67,15 +74,20 @@ def _get_processor(device_id: str) -> FrameProcessor:
 
 @app.get("/healthz")
 def healthz():
-    return {"ok": True, "backend": BACKEND.name, "devices": len(_processors)}
+    return {
+        "ok": True,
+        "model": MODEL.name,
+        "moisture_loaded": MODEL.moisture_loaded,
+        "devices": len(_processors),
+    }
 
 
 @app.post("/infer")
 def infer(req: InferRequest):
     frame = _decode_frame(req.frame_jpeg_b64)
     proc = _get_processor(req.device_id)
-    boxes, scores = BACKEND.infer_detr(frame)
-    return proc.process(frame, boxes, scores, moisture_infer=BACKEND.infer_moisture)
+    boxes, scores = MODEL.infer_detr(frame)
+    return proc.process(frame, boxes, scores, moisture_infer=MODEL.infer_moisture)
 
 
 class ConfigUpdate(BaseModel):

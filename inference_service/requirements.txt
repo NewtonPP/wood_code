@@ -1,12 +1,11 @@
 # Cloud inference-service dependencies.
 #
 # numpy + opencv do the frame decode and post-processing (woodchip_core).
-# Add the model runtime when real models land:
-#   onnxruntime-gpu   (GPU host)  or  onnxruntime  (CPU)
-# and set INFER_BACKEND=onnx. The default mock backend needs no model runtime.
+# onnxruntime (CPU) serves the exported DETR model (INFER_BACKEND=onnx);
+# switch to onnxruntime-gpu on a GPU host.
 
 fastapi>=0.110
 uvicorn[standard]>=0.27
 numpy>=1.26
 opencv-python-headless>=4.8
-# onnxruntime-gpu>=1.17   # uncomment on a GPU host once models are exported
+onnxruntime>=1.17

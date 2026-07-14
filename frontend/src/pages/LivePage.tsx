@@ -91,6 +91,13 @@ function StatsPanel({ data }: { data: Stats | null }) {
               {data.alarm_max_d_mm != null ? Number(data.alarm_max_d_mm).toFixed(1) : "?"})
             </span>
           </>
+        ) : units !== "mm" ? (
+          <>
+            <span className="stat-label">Alarm:</span>{" "}
+            <span className="stat-value" style={{ color: "#b45309" }}>
+              needs mm calibration — show the reference disk
+            </span>
+          </>
         ) : data.alarm_threshold_mm != null ? (
           <>
             <span className="stat-label">Alarm:</span>{" "}

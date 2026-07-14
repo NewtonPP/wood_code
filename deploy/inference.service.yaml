@@ -1,10 +1,13 @@
-# Cloud Run service — private inference service.
+# Cloud Run service — private inference service (real ONNX models).
 # Declarative reference; fill the __PLACEHOLDERS__ then:
 #   gcloud run services replace deploy/inference.service.yaml --region=__REGION__
-# (The deploy/README.md shows the equivalent imperative `gcloud run deploy`.)
+# (DEPLOYMENT.md shows the equivalent imperative `gcloud run deploy`.)
 #
 # Ingress is INTERNAL: only the backend (same VPC/project) can reach it — it is
-# never exposed to the internet.
+# never exposed to the internet. Both ONNX models are baked into the image at
+# their in-code default paths: inference_service/models/detr_resnet101.onnx
+# (detection/sizing) and inference_service/models/moistnetlite.onnx (moisture,
+# with class labels in moistnetlite_classes.txt).
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
@@ -15,20 +18,21 @@ spec:
   template:
     metadata:
       annotations:
-        autoscaling.knative.dev/minScale: "0"   # scale to zero when idle
+        autoscaling.knative.dev/minScale: "1"   # keep warm: CPU inference ~2s/frame
         autoscaling.knative.dev/maxScale: "4"
     spec:
-      containerConcurrency: 8
+      containerConcurrency: 2
       containers:
         - image: __REGION__-docker.pkg.dev/__PROJECT_ID__/__REPO__/inference:latest
           ports:
             - containerPort: 9000
-          env:
-            - name: INFER_BACKEND
-              value: "mock"          # switch to "onnx" + model paths when models land
           resources:
             limits:
-              cpu: "2"
-              memory: 2Gi
-          # For real GPU inference (INFER_BACKEND=onnx), use a GPU-enabled image +
-          # add the nvidia accelerator annotation/limits per Cloud Run GPU docs.
+              cpu: "4"
+              memory: 4Gi
+          # Optional env:
+          #   DEFAULT_PIXELS_PER_MM  manual mm calibration for fixed-mount cameras
+          #   MOISTURE_ONNX_PATH / MOISTURE_CLASSES_PATH  to override the baked-in
+          #     moisture model / labels (defaults already point at the image copies)
+          # For GPU inference, use an onnxruntime-gpu image + the nvidia
+          # accelerator annotation/limits per Cloud Run GPU docs.

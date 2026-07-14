@@ -15,6 +15,7 @@ Auth: the session cookie is validated on connect and the user must have the
 (tenant isolation) — a browser cannot push to or read another account's stream.
 """
 
+import asyncio
 import base64
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -73,18 +74,43 @@ async def ingest_ws(ws: WebSocket):
         pass  # registry is best-effort; never block the stream
     await ws.accept()
 
+    # Latest-frame-wins: the browser streams faster than real inference runs
+    # (~6 fps in vs seconds/frame on CPU ONNX), so a serial receive->infer loop
+    # would build an unbounded backlog and the overlay would drift minutes
+    # behind live video. A reader task keeps only the NEWEST frame; the infer
+    # loop always processes that one and every frame that arrived mid-inference
+    # is dropped.
+    latest = {"jpeg_b64": None}
+    new_frame = asyncio.Event()
+    closed = asyncio.Event()
+
+    async def _reader():
+        try:
+            while True:
+                msg = await ws.receive()
+                if msg.get("type") == "websocket.disconnect":
+                    break
+                # Accept either binary JPEG bytes or a base64 text frame.
+                if msg.get("bytes") is not None:
+                    latest["jpeg_b64"] = base64.b64encode(msg["bytes"]).decode()
+                elif msg.get("text") is not None:
+                    latest["jpeg_b64"] = msg["text"]
+                else:
+                    continue
+                new_frame.set()
+        finally:
+            closed.set()
+            new_frame.set()  # unblock the infer loop so it can exit
+
+    reader_task = asyncio.create_task(_reader())
     try:
         while True:
-            msg = await ws.receive()
-            if msg.get("type") == "websocket.disconnect":
+            await new_frame.wait()
+            new_frame.clear()
+            if closed.is_set():
                 break
-
-            # Accept either binary JPEG bytes or a base64 text frame.
-            if msg.get("bytes") is not None:
-                jpeg_b64 = base64.b64encode(msg["bytes"]).decode()
-            elif msg.get("text") is not None:
-                jpeg_b64 = msg["text"]
-            else:
+            jpeg_b64 = latest["jpeg_b64"]
+            if jpeg_b64 is None:
                 continue
 
             try:
@@ -108,3 +134,7 @@ async def ingest_ws(ws: WebSocket):
             await ws.send_json({"ok": True, "result": result})
     except WebSocketDisconnect:
         pass
+    except RuntimeError:
+        pass  # send after the client disconnected mid-inference
+    finally:
+        reader_task.cancel()
