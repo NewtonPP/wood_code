@@ -168,7 +168,14 @@ after that, updates are just Section 6.
 
 ### 4.1 Prerequisites
 
-A Google Cloud account with billing enabled and a project. Then:
+A Google Cloud account with billing enabled and a project.
+To create a new project go to : https://console.cloud.google.com/ -> Login with your account
+On top left corner right beside Google Cloud icon you can create a new project.
+![alt text](images/image.png)
+![alt text](images/image-1.png)
+
+After creating a new project copy the project ID shown there
+Then in terminal:
 
 ```bash
 gcloud auth login
@@ -199,8 +206,13 @@ holds the images):
 ```bash
 gcloud artifacts repositories list --location="$REGION"
 ```
+To see artifacts repositories in google cloud, search for artifacts registry by clicking search icon in google cloud console. 
+The artifacts registry looks like this: 
+![alt text](images/image-2.png)
 
-Otherwise create it:
+There exists a woodchip repository in mine
+
+If there is no repository create it:
 
 ```bash
 gcloud artifacts repositories create "$REPO" \
@@ -239,6 +251,7 @@ export SQL_CONN=$(gcloud sql instances describe woodchip-pg \
   --format='value(connectionName)')
 export DATABASE_URL="postgresql://wc_app:CHANGE_ME_STRONG@/woodchip?host=/cloudsql/${SQL_CONN}"
 ```
+While creating this sql instance an error may occur with --tier=db-f1-micro. If it occurs try with different tier from google cloud sql. For example: db-perf-optimized-N-4. Please do look at google cloud sql and check different tiers of postgresql instances
 
 The `?host=/cloudsql/…` form makes psycopg connect over Cloud Run's built-in
 Cloud SQL unix socket — the database needs no public IP. You do **not** create
@@ -247,8 +260,8 @@ tables manually; the app creates the schema on first boot.
 ### 4.6 Store secrets (Secret Manager)
 
 ```bash
-printf '%s' "admin@yourcompany.com"   | gcloud secrets create ADMIN_EMAIL    --data-file=-
-printf '%s' "a-strong-admin-password" | gcloud secrets create ADMIN_PASSWORD --data-file=-
+printf '%s' "admin@yourcompany.com"   | gcloud secrets create ADMIN_EMAIL    --data-file=- # Change with your admin email you like to add
+printf '%s' "a-strong-admin-password" | gcloud secrets create ADMIN_PASSWORD --data-file=- # change with your admin password you like to add 
 printf '%s' "$DATABASE_URL"           | gcloud secrets create DATABASE_URL   --data-file=-
 
 # Allow the Cloud Run runtime service account to read them:
